@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRM Flashcards</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f0eb; color: #2d2a26; min-height: 100vh; }
+
+.header { text-align: center; padding: 1.5rem 1rem 0.5rem; }
+.header h1 { font-size: 1.4rem; color: #2d2a26; font-weight: 600; }
+.header p { font-size: 0.85rem; color: #8a8480; margin-top: 0.3rem; }
+
+.filters { display: flex; gap: 0.4rem; padding: 0.8rem 1rem; overflow-x: auto; justify-content: center; flex-wrap: wrap; }
+.filters button {
+  padding: 0.35rem 0.75rem; border: 1px solid #d6cfc8; border-radius: 999px;
+  background: #fff; color: #6b6560; font-size: 0.8rem; cursor: pointer; white-space: nowrap;
+  transition: all 0.2s;
+}
+.filters button.active { background: #2d2a26; color: #f5f0eb; border-color: #2d2a26; font-weight: 600; }
+.filters button:hover { border-color: #2d2a26; }
+
+.progress-bar { margin: 0.5rem 1.5rem; height: 4px; background: #e0d9d2; border-radius: 2px; }
+.progress-fill { height: 100%; background: #2d2a26; border-radius: 2px; transition: width 0.3s; }
+.stats { text-align: center; font-size: 0.8rem; color: #8a8480; padding: 0.4rem; }
+
+.card-container { display: flex; justify-content: center; padding: 1rem; perspective: 1000px; }
+.card {
+  width: 100%; max-width: 640px; min-height: 340px; position: relative; cursor: pointer;
+  transform-style: preserve-3d; transition: transform 0.5s;
+}
+.card.flipped { transform: rotateY(180deg); }
+.card-face {
+  position: absolute; inset: 0; backface-visibility: hidden; border-radius: 12px;
+  padding: 2rem; display: flex; flex-direction: column; justify-content: center;
+}
+.card-front { background: #fff; border: 1px solid #e0d9d2; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.card-back {
+  background: #fffdf9; border: 1px solid #d6cfc8; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transform: rotateY(180deg); overflow-y: auto;
+}
+.card-label { font-size: 0.75rem; color: #8a8480; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.card-front .card-text { font-size: 1.15rem; line-height: 1.6; color: #2d2a26; }
+.card-back .card-text { font-size: 0.95rem; line-height: 1.7; color: #3d3a36; }
+.card-back .card-text ul { padding-left: 1.2rem; margin-top: 0.5rem; }
+.card-back .card-text li { margin-bottom: 0.4rem; }
+.card-hint { position: absolute; bottom: 1rem; right: 1.5rem; font-size: 0.7rem; color: #b5afa8; }
+
+.controls { display: flex; justify-content: center; gap: 0.6rem; padding: 1rem; flex-wrap: wrap; }
+.btn {
+  padding: 0.55rem 1.2rem; border: 1px solid #d6cfc8; border-radius: 8px; font-size: 0.85rem;
+  cursor: pointer; transition: all 0.15s; font-weight: 500; background: #fff; color: #2d2a26;
+}
+.btn:hover { background: #ede8e3; }
+.btn-prev, .btn-next { background: #fff; color: #2d2a26; }
+.btn-know { background: #2d2a26; color: #f5f0eb; border-color: #2d2a26; }
+.btn-know:hover { background: #1a1816; }
+.btn-dontknow { background: #fff; color: #c0392b; border-color: #e0d9d2; }
+.btn-dontknow:hover { background: #fdf2f0; }
+.btn-shuffle { background: #fff; color: #2d2a26; border-color: #d6cfc8; }
+.btn-reset { background: #fff; color: #8a8480; border-color: #d6cfc8; }
+.btn:disabled { opacity: 0.3; cursor: default; }
+
+.keyhint { text-align: center; font-size: 0.7rem; color: #b5afa8; padding: 0.5rem; }
+
+.done { text-align: center; padding: 3rem 1rem; }
+.done h2 { color: #2d2a26; font-size: 1.8rem; margin-bottom: 1rem; }
+.done p { color: #8a8480; margin-bottom: 0.5rem; }
+.done .score { font-size: 3rem; color: #2d2a26; font-weight: 700; margin: 1rem 0; }
+
+@media (max-width: 500px) {
+  .card-front .card-text { font-size: 1rem; }
+  .card-back .card-text { font-size: 0.85rem; }
+  .card-face { padding: 1.2rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Flood Risk Management &#8211; Flashcards</h1>
+  <p id="subtitle">Exam Prep</p>
+</div>
+
+<div class="filters" id="filters"></div>
+
+<div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+<div class="stats" id="stats"></div>
+
+<div class="card-container" id="cardArea">
+  <div class="card" id="card" onclick="flipCard()">
+    <div class="card-face card-front">
+      <div class="card-label" id="qlabel"></div>
+      <div class="card-text" id="qtext"></div>
+      <div class="card-hint">Click or Space to flip</div>
+    </div>
+    <div class="card-face card-back">
+      <div class="card-label">ANSWER</div>
+      <div class="card-text" id="atext"></div>
+    </div>
+  </div>
+</div>
+
+<div class="done" id="doneScreen" style="display:none;">
+  <h2>Done!</h2>
+  <div class="score" id="finalScore"></div>
+  <p id="finalDetail"></p>
+  <br>
+  <button class="btn btn-shuffle" onclick="resetAll()">Again</button>
+  <button class="btn btn-dontknow" onclick="reviewWrong()" id="btnReviewWrong">Review wrong ones</button>
+</div>
+
+<div class="controls" id="controls">
+  <button class="btn btn-prev" onclick="prev()" id="btnPrev">&#8592; Back</button>
+  <button class="btn btn-dontknow" onclick="markCard(false)">&#10008; Don't know</button>
+  <button class="btn btn-know" onclick="markCard(true)">&#10004; Got it</button>
+  <button class="btn btn-next" onclick="next()" id="btnNext">Next &#8594;</button>
+</div>
+<div class="controls">
+  <button class="btn btn-shuffle" onclick="shuffleDeck()">Shuffle</button>
+  <button class="btn btn-reset" onclick="resetAll()">Reset</button>
+</div>
+
+<div class="keyhint">&#8592; &#8594; navigate &bull; Space = flip &bull; Enter = got it &bull; X = don't know</div>
+
+<script>
+const ALL_CARDS = [
+  // ===== LECTURE 1 =====
+  {id:"1.1", lecture:"L1", q:"Explain the difference between \"risk\" in everyday language and \"flood risk\" in hydraulic terms.",
+   a:"<b>Everyday:</b> Vague feeling that something bad might happen.<br><br><b>Hydraulic engineering:</b> Flood Risk = Probability \u00d7 Expected Damage.<ul><li>Probability: e.g. HQ100 (100-year flood)</li><li>Damage: adverse consequences for health, environment, cultural heritage, economy</li></ul>This makes risk <b>measurable</b> and comparable \u2014 unlike the everyday use of the word."},
+
+  {id:"1.2", lecture:"L1", q:"Describe the EU Floods Directive (2007/60/EC) and its three-step approach.",
+   a:"<b>Step I \u2013 Preliminary Flood Risk Assessment</b> (by end 2011):<br>Document historical floods, describe river basins, evaluate future flood probability.<br><br><b>Step II \u2013 Flood Hazard & Risk Maps</b> (by end 2013):<br>Maps for HQ10, HQ100, HQextreme showing water depths, velocities, affected residents.<br><br><b>Step III \u2013 Flood Risk Management Plans</b> (by end 2015):<br>Measures covering prevention, protection, preparedness. Measures that increase risk for neighbours are banned. Criticism: no deadline for actual implementation."},
+
+  {id:"1.3", lecture:"L1", q:"Explain the Flood Risk Management Cycle (6 phases).",
+   a:"A continuous, repeating process:<ul><li><b>Prevention:</b> Land-use planning, keeping floodplains free</li><li><b>Protection:</b> Dikes, retention basins, natural retention</li><li><b>Preparedness:</b> Forecasting, warning systems, evacuation plans</li><li><b>Emergency Response:</b> Evacuations, mobile barriers, rescue</li><li><b>Recovery:</b> Clean-up, rebuilding, compensation</li><li><b>Review:</b> Lessons learned, update maps and plans</li></ul>After each event, the cycle starts again \u2014 flood management never ends."},
+
+  {id:"1.4", lecture:"L1", q:"Who is the most crucial addressee for flood risk management and why?",
+   a:"<b>The individual citizen.</b><ul><li>No system offers 100% safety \u2192 personal precaution is essential</li><li>Public participation is legally required (Floods Directive + WFD)</li><li>Without an informed public, even the best warning systems fail</li><li>Citizens make location decisions (where to build/live)</li></ul>Top-down government measures + bottom-up citizen engagement must work together."},
+
+  {id:"1.5", lecture:"L1", q:"Which measures does the Floods Directive require to decrease flood risk?",
+   a:"The Directive does NOT prescribe specific measures but requires three pillars:<ul><li><b>Natural water retention:</b> Preserve/restore floodplains, wetlands, retention areas</li><li><b>Technical flood protection:</b> Dikes, walls, retention basins, polders</li><li><b>Far-reaching precautions:</b> Land-use planning, adapted building, insurance, warning systems</li></ul>Measures that increase risk for upstream/downstream neighbours are banned. Key criticism: no binding deadline for implementation."},
+
+  {id:"1.6", lecture:"L1", q:"Explain the connection between the Floods Directive and the EU Water Framework Directive (WFD).",
+   a:"The WFD is the \"big sister\" (water ecology & quality). The Floods Directive adds flood risk on top.<ul><li><b>Shared structure:</b> Same river basin districts, authorities, timelines, public participation</li><li><b>Content alignment:</b> Risk maps/plans must align with WFD Art. 4, 11, 13</li><li><b>Synergies:</b> Restoring a floodplain = less flood risk + better ecological status</li></ul>The Floods Directive closed the gap that the WFD had regarding floods."},
+
+  {id:"1.7", lecture:"L1", q:"What are \"risk elements\" and why is aggregation important?",
+   a:"Risk elements = everything that can be damaged by a flood:<ul><li>Buildings, infrastructure, cultural heritage, nature areas, <b>humans</b></li></ul><b>Aggregation:</b> It is impossible to assess every object individually for an entire river basin. So risk elements are grouped (e.g. all single-family houses in one category) \u2192 makes damage estimation feasible at large scale."},
+
+  {id:"1.8", lecture:"L1", q:"How is \"damage\" categorised in the context of flood risk?",
+   a:"<ul><li><b>Property damage:</b> Measurable in euros (buildings, contents, infrastructure)</li><li><b>Casualties:</b> Number of people killed or injured</li><li><b>Environmental damage:</b> Usually NOT monetisable (habitat destruction, water pollution)</li></ul>Risk management plans must consider all three categories."},
+
+  {id:"1.9", lecture:"L1", q:"What is \"flood plain zoning\" and why is periodic flooding ecologically important?",
+   a:"Three zones along a river:<ul><li><b>Aquatic:</b> Permanently underwater (fish, water insects)</li><li><b>Amphibious:</b> Periodically wet/dry (amphibians, dragonflies, reed)</li><li><b>Terrestrial:</b> Above normal water level (nettles, floodplain forests)</li></ul>Wetlands <b>need</b> periodic flooding for their species diversity. Dikes cutting off floodplains destroy these ecosystems \u2014 that's why modern management seeks a balance."},
+
+  {id:"1.10", lecture:"L1", q:"How does climate change relate to the Floods Directive and WFD?",
+   a:"<ul><li>Climate change is officially recognised as an environmental impact (Art. 5 WFD)</li><li>Adaptation strategies must be integrated into both directives</li><li>Projections for 2080 show significantly higher HQ100 discharges across Europe</li><li>1998\u20132005: Numerous devastating floods in Europe underscore the urgency</li></ul>"},
+
+  {id:"1.11", lecture:"L1", q:"How do EU/German law define \"flood\" and \"flood protection\"?",
+   a:"<b>Flood (EU):</b> \"Temporary covering by water of land not normally covered by water.\" Broad: covers river, flash, urban, coastal floods.<br><br><b>Flood protection (DIN 4047):</b> Entirety of measures:<ul><li>Waterway construction & water control</li><li>Dike construction</li><li>Flood retention (basins, polders)</li><li>Structural changes to vulnerable buildings</li></ul>\"Flood protection\" is narrower than \"flood risk management\" (only technical/structural)."},
+
+  // ===== LECTURE 2 =====
+  {id:"2.1", lecture:"L2", q:"Design a campaign to inform citizens about establishing a flood inundation area. What methods would you use and why?",
+   a:"<b>6-step multi-channel approach:</b><ul><li><b>1. Audience & message:</b> \"A flood inundation area can be flooded \u2014 check if you're affected.\" Avoid jargon.</li><li><b>2. Classical channels:</b> Town halls, newspapers, flyers (reach elderly)</li><li><b>3. Internet/social media:</b> Website, push notifications, apps (2013 Elbe: 91M hits)</li><li><b>4. Serious games:</b> SchaVIS, SimFlood, HQ50 \u2014 playful learning</li><li><b>5. Hands-on:</b> Build a mobile flood wall, VR simulations</li><li><b>6. Community platforms:</b> Like \"Fluthilfe Dresden\"</li></ul>Classical = nobody excluded; digital = speed; games = lasting understanding."},
+
+  {id:"2.2", lecture:"L2", q:"Name smartphone apps that increase flood risk awareness and describe their contents simply.",
+   a:"<ul><li><b>Warnwetter (DWD):</b> Precipitation radar + weather warnings \u2014 \"early warning\"</li><li><b>RegenRadar:</b> Detailed precipitation data</li><li><b>MeinPegel:</b> Current gauge levels + notification stages I\u2013IV, personal alerts</li><li><b>Pegelalarm:</b> Gauge levels for DE/AT/CH, personal threshold</li><li><b>HochwassergefahrST:</b> Hazard maps for Saxony-Anhalt</li><li><b>NINA (BBK):</b> Most comprehensive \u2014 floods, weather, industrial accidents</li></ul><b>Chain:</b> Weather apps warn \u2192 gauge apps show rise \u2192 map apps show impact \u2192 NINA coordinates."},
+
+  {id:"2.3", lecture:"L2", q:"What changed in flood communication between the 2002 and 2013 Elbe floods?",
+   a:"<ul><li><b>2002:</b> 18 million web hits</li><li><b>2013:</b> 91 million hits, mostly mobile</li><li><b>Positive 2013:</b> 24h live ticker, guide for affected residents, real-time gauge app</li><li><b>Negative 2013:</b> Misinformation on social media, pressure for minute-by-minute updates</li></ul><b>Lessons:</b> Have a social media strategy BEFORE a flood; designate one authoritative source; design mobile-first."},
+
+  {id:"2.4", lecture:"L2", q:"What are \"serious games\" in flood risk management? Give examples.",
+   a:"Games with an educational purpose (\"informal learning\"):<ul><li><b>SchaVIS:</b> Damage visualisation on buildings (4 scenarios)</li><li><b>SimFlood:</b> Insurance decisions as a homeowner</li><li><b>SeCom 2.0:</b> Risk communication (RWTH Aachen)</li><li><b>HQ50:</b> \"Flooding in Your Community\" (Saxony Flood Centre)</li><li><b>Stop Disasters (UNDRR):</b> All natural disasters, strategic decisions</li></ul>Effective because: active decision-making + emotional involvement = better memory retention."},
+
+  // ===== LECTURE 3 =====
+  {id:"3.1", lecture:"L3", q:"You must assess flood risk in an unknown catchment abroad. How would you approach this?",
+   a:"Following EU Floods Directive Art. 4(2) \u2014 preliminary assessment:<ul><li><b>1.</b> Gather historical flood records (chronicles, reports)</li><li><b>2.</b> Look for flood marks on buildings and bridges</li><li><b>3.</b> Review historical maps/documents in archives</li><li><b>4.</b> Apply source-critical analysis of handwritten materials (1500\u20131950)</li><li><b>5.</b> Check existing water management plans and databases</li><li><b>6.</b> Assess recurrence likelihood</li></ul>The Directive allows verbal descriptions \u2014 no complex modelling needed at this stage."},
+
+  {id:"3.2", lecture:"L3", q:"How would you inform residents about the legal designation of a floodplain area?",
+   a:"Based on principles established since 1909 (Saxony Water Law):<ul><li><b>Public notice:</b> In official gazettes and local newspapers</li><li><b>Public display:</b> Plans displayed for at least 3 months for review/objections</li><li><b>Precise plans:</b> Scale 1:1,000 to 1:2,000 so citizens can see if their property is affected</li><li><b>Modern additions:</b> Information events + online portals</li></ul>"},
+
+  {id:"3.3", lecture:"L3", q:"What role do historical floods play in the EU Floods Directive?",
+   a:"They are the <b>foundation</b> of the preliminary risk assessment. Art. 4(2) requires:<ul><li>Description of past floods with significant adverse effects (extent, routes, impacts)</li><li>Description of past floods where similar future consequences are expected</li></ul>Great flexibility: verbal descriptions and existing documents are sufficient. No complex modelling required."},
+
+  {id:"3.4", lecture:"L3", q:"What types of historical evidence can reconstruct past flood events?",
+   a:"<ul><li><b>Flood marks:</b> Physical marks on buildings (e.g. Main in Frankfurt since 1342)</li><li><b>Historical inundation maps:</b> Elbe 1890, Saale 1920</li><li><b>Aerial photo archives:</b> Mulde near Jessnitz 1932</li><li><b>Photo documentation:</b> Leine in G\u00f6ttingen 1909</li><li><b>Written archive materials:</b> Manuscripts from 1500\u20131950</li></ul>"},
+
+  {id:"3.5", lecture:"L3", q:"What historical land-use restrictions existed in floodplains?",
+   a:"Prussian Law Collection (1913):<ul><li>No raising the ground surface or constructing buildings without permission</li><li>No removing dikes, dams, or similar elevations</li><li>Obligation to clear the flood area of obstructions</li></ul>These are <b>remarkably similar</b> to today's Federal Water Act (WHG) \u2014 the principles have been understood for over 100 years."},
+
+  // ===== LECTURE 4 =====
+  {id:"4.1", lecture:"L4", q:"Explain the concept and structure of Flood Action Plans in NRW.",
+   a:"Water-body-specific planning instruments (LAWA recommendation 1999):<ol><li><b>Inventory:</b> Identify all flood-prone areas</li><li><b>Hydrology:</b> Rainfall-runoff models \u2192 discharges for various return periods</li><li><b>Hydraulics:</b> Discharges \u2192 water levels \u2192 depth maps</li><li><b>Damage potential:</b> Land use + damage functions \u2192 monetary damages</li><li><b>Existing protection:</b> Document natural retention + technical measures</li><li><b>Catalogue of measures:</b> Cost-benefit evaluation for each measure</li></ol>Goals: Reduce damage risk, reduce water levels, strengthen awareness, improve early warning."},
+
+  {id:"4.2", lecture:"L4", q:"What concrete benefits did each stakeholder gain from participating in Flood Action Plans?",
+   a:"<ul><li><b>District governments:</b> Harmonised risk overview, cross-municipal coordination</li><li><b>Municipalities:</b> Detailed maps usable for spatial planning (required by Flood Control Act 2005)</li><li><b>Water boards:</b> Hydrological/hydraulic models + prioritised measure catalogue</li><li><b>Residents/businesses:</b> Risk awareness \u2192 personal precaution (adapted building, insurance)</li></ul>"},
+
+  {id:"4.3", lecture:"L4", q:"Name the four precautionary principles of Flood Action Plans with examples.",
+   a:"<ol><li><b>Area-based precaution:</b> Keep flood-prone areas free \u2014 e.g. designate flood areas, restrict land use</li><li><b>Building precaution:</b> Make buildings resilient \u2014 e.g. flood-adapted construction, mark flood levels on buildings</li><li><b>Behavioural precaution:</b> Ensure people know what to do \u2014 e.g. improve forecasting, set up alarm plans, conduct exercises</li><li><b>Risk precaution:</b> Cover residual risk \u2014 e.g. insurance, financial reserves</li></ol>"},
+
+  {id:"4.4", lecture:"L4", q:"Explain the relationship between discharges of different return periods and expected damages.",
+   a:"<ol><li><b>Hydrology:</b> Discharges for HQ10, HQ50, HQ100, HQ500</li><li><b>Hydraulics:</b> Discharges \u2192 water levels \u2192 depth maps</li><li><b>Damage evaluation:</b> Land use + damage functions \u2192 monetary damages per scenario</li><li><b>Probability-damage curve:</b> Frequent events = low damage; rare = high damage</li><li><b>Yearly expected damage:</b> Area under the curve = annualised risk</li></ol>Measures shift the curve downward \u2192 compare cost-reduction ratio for prioritising investments."},
+
+  {id:"4.5", lecture:"L4", q:"What is the \"three-pillar model\" of flood protection?",
+   a:"53rd Conference of Environment Ministers (1999):<ul><li><b>Pillar 1:</b> Preventive flood protection (floodplain management)</li><li><b>Pillar 2:</b> Technical flood protection (dikes, walls, retention basins)</li><li><b>Pillar 3:</b> Further prevention (adapted building, insurance, emergency planning)</li></ul><b>Paradigm shift</b> (Flood Control Act 2005): Away from \"flood control promise\" (technology guarantees safety) toward sober \"dealing with the risk\" \u2014 absolute protection is impossible."},
+
+  // ===== LECTURE 5 =====
+  {id:"5.1", lecture:"L5", q:"Explain to a resident the difference between a flood hazard map and a flood risk map.",
+   a:"<b>Hazard map = WHERE and HOW BAD:</b><br>Shows probability + intensity (water depth, flow velocity). Answers: \"How dangerous is the water?\"<br><br><b>Risk map = WHAT and WHO affected:</b><br>Shows affected inhabitants, economic activities, polluting installations, protected areas (Natura 2000). Answers: \"What damage could that water cause?\""},
+
+  {id:"5.2", lecture:"L5", q:"Which recurrence intervals are used for flood maps and what does each show?",
+   a:"<b>3 categories:</b><ul><li><b>High probability:</b> HQ10/20/50</li><li><b>Medium:</b> HQ100 (standard design flood in Germany)</li><li><b>Low (extreme):</b> HQextreme (rarer than HQ200)</li></ul><b>Hazard map shows per scenario:</b><ul><li>Flood extent</li><li>Water depth: 0\u20130.5 / 0.5\u20131 / 1\u20132 / 2\u20134 / >4 m</li><li>Flow velocity: <0.5 / 0.5\u20132.0 / >2.0 m/s</li></ul>LAWA also recommends a comparison map overlaying all three extents."},
+
+  {id:"5.3", lecture:"L5", q:"How was comparability of flood maps across German federal states ensured?",
+   a:"<ul><li><b>LAWA recommendations (2004, 2007):</b> Standardised return periods, depth/velocity classes, scales</li><li><b>Federal Water Act (WHG):</b> Legal framework with deadlines</li><li><b>EU Floods Directive Art. 6(5):</b> EU-wide minimum content</li><li><b>WasserBLIcK:</b> National geoportal \u2014 all states upload maps centrally</li></ul>"},
+
+  {id:"5.4", lecture:"L5", q:"Arguments for and against a general building ban in floodplains? Alternatives?",
+   a:"<b>FOR:</b> Preserves retention volume, prevents worsening risk, protects life, saves long-term costs.<br><br><b>AGAINST:</b> Economic constraints in dense areas, existing settlements, not all areas equally risky.<br><br><b>Alternatives:</b><ul><li>Compensation requirements (Cologne: provide equivalent retention volume)</li><li>Risk-differentiated zoning (red/blue/yellow/hatched)</li><li>Flood-adapted building design</li><li>Permit-based system (WHG \u00a778) for case-by-case assessment</li></ul>"},
+
+  {id:"5.5", lecture:"L5", q:"Who are the main users of flood maps and at what scales?",
+   a:"<ul><li><b>Water authorities (1:5,000\u20131:10,000):</b> Flood control plans, priorities</li><li><b>Regional planning (1:50,000\u20131:100,000):</b> Priority/reservation areas</li><li><b>Municipalities (1:1,000\u20131:25,000):</b> Urban planning, civil protection, evacuation</li><li><b>Insurance (1:10,000):</b> Z\u00dcRS zoning for premiums</li><li><b>Residents (1:1,000\u20131:10,000):</b> Building precautions, emergency plans, insurance</li></ul>"},
+
+  {id:"5.6", lecture:"L5", q:"What is a flood hazard zone map and how does it differ from a standard hazard map?",
+   a:"Combines probability + intensity into <b>one</b> classification for planners:<ul><li><b>Red (substantial):</b> High probability/intensity \u2192 building banned</li><li><b>Blue (moderate):</b> Construction with strict conditions</li><li><b>Yellow (low):</b> Fewer restrictions, precautions recommended</li><li><b>Hatched (residual):</b> Only affected in extreme scenarios</li></ul>Much more usable for planners than raw water depths/velocities."},
+
+  // ===== LECTURE 6 =====
+  {id:"6.1", lecture:"L6", q:"1D vs 2D hydraulic model: What data does 2D have that 1D doesn't? Advantages/disadvantages?",
+   a:"<b>2D has additionally:</b> Continuous DTM, breaklines in mesh, spatially distributed roughness, full 2D velocity vectors.<br><br><b>2D pros:</b> Realistic floodplain flow, cross-flows, good retention calculation.<br><b>2D cons:</b> Higher computational effort, needs high-res DTM, complex setup.<br><br><b>1D pros:</b> Fast, good for in-channel discharge.<br><b>1D cons:</b> No cross-flows, implausible floodplain velocities, poor retention simulation."},
+
+  {id:"6.2", lecture:"L6", q:"Describe the procedure for setting up a hydraulic model for flood hazard mapping.",
+   a:"<ol><li><b>DTM:</b> LiDAR data \u2192 1m grid, automatic thinning</li><li><b>Breaklines:</b> Detect road embankments, dikes from DTM</li><li><b>Land cover:</b> Aerial photos + ATKIS \u2192 assign kSt roughness values</li><li><b>Mesh:</b> Finer in channel, coarser in floodplain, integrate breaklines</li><li><b>Boundary conditions:</b> Inflow hydrographs for HQ10, HQ100, HQextreme</li><li><b>Calibration:</b> Historical floods \u2192 adjust roughness to match observed levels</li><li><b>Validation:</b> Test against a different historical event</li><li><b>Production:</b> Run design discharges \u2192 extract depths/velocities \u2192 hazard maps</li></ol>"},
+
+  {id:"6.3", lecture:"L6", q:"How would you define roughness approaches for a 2D hydraulic model?",
+   a:"Manning-Strickler formula: V = kSt \u00d7 I^(1/2) \u00d7 R^(2/3)<ol><li><b>Classify land cover</b> using remote sensing, ATKIS, GIS</li><li><b>Assign kSt values:</b> Channel 30\u201340 (smooth), floodplain 5\u20138 (rough/vegetated)</li><li><b>Generate roughness map</b> overlaid onto mesh</li><li><b>Sensitivity analysis:</b> Vary values within plausible ranges</li><li><b>Calibration adjustment:</b> Fine-tune against observed flood events</li></ol>"},
+
+  {id:"6.4", lecture:"L6", q:"What issues arise when using a 1D model for flood hazard mapping vs 2D?",
+   a:"<ul><li><b>Implausible floodplain velocities</b> (from cross-section calculation)</li><li><b>No cross-flows</b> (assumes all flow along channel axis)</li><li><b>Inaccurate inundation extent</b> (horizontal water surface projected from profiles)</li><li><b>Manual simplifications needed</b> (short-circuit flows, building flow-around)</li><li><b>Poor retention simulation</b></li><li><b>Degraded hazard map quality</b> (depth AND velocity needed everywhere)</li></ul>"},
+
+  {id:"6.5", lecture:"L6", q:"What is a hybrid 1D/2D model and what is its key limitation?",
+   a:"<b>Combination:</b> 1D for main channel + 2D for floodplain (e.g. SOBEK, MIKE). Connected via \"linking line\".<br><br><b>Key limitation:</b> No momentum exchange! Water volume transfers between domains, but velocity/direction does NOT. In reality, fast channel flow drags floodplain water along. Despite this, hybrid models offer a practical speed-accuracy compromise."},
+
+  {id:"6.6", lecture:"L6", q:"What are the main sources of uncertainty in hydraulic flood modelling?",
+   a:"<ul><li><b>Cross-sectional profiles:</b> May be outdated (erosion/sedimentation)</li><li><b>Roughness parameters:</b> Calibrated against imperfect measurements; vegetation changes over time</li><li><b>DTM errors:</b> Even LiDAR has filtering artefacts</li><li><b>Design discharge (Q):</b> Statistically uncertain due to limited observation records</li></ul>Conclusion: Flood hazard maps are <b>best estimates</b>, not exact boundaries."},
+
+  // ===== LECTURE 7 =====
+  {id:"7.1", lecture:"L7", q:"Explain the key tasks from planning to operation of a mobile flood protection system (Cologne case study).",
+   a:"<ol><li><b>Risk analysis:</b> Design water level (Cologne: up to 11.90 m gauge)</li><li><b>System design:</b> Stoplog-and-pillar \u2014 3,851 pillars, 39,405 stoplogs, 10.3 km wall</li><li><b>Sectioning (PFA):</b> Divide line into sections, assign construction companies</li><li><b>Logistics:</b> 8 deposits (~7,000 m\u00b2) close to deployment areas</li><li><b>Organisation:</b> Flood Protection Centre, 87 technicians, 15 companies, DLRG ferries</li><li><b>Regular exercises:</b> Yearly (3\u201328%), assembling + scenario exercises</li><li><b>Operation:</b> Assembly, monitoring, ferry service, dismantling</li></ol>"},
+
+  {id:"7.2", lecture:"L7", q:"Should Cologne use a system for slow river floods or also for flash floods?",
+   a:"<b>Slow river flood system is correct.</b><ul><li>Rhine = large river, slow predictable waves, days of lead time</li><li>39,405 stoplogs across 10.3 km = many hours assembly \u2192 impossible in minutes for flash floods</li><li>Flash-flood systems (self-activating, inflatable) are far more expensive, height-limited, unsuitable for 10+ km</li><li>Cologne's organisation relies on forecasting + lead time</li></ul>However: for smaller tributaries or urban drainage, separate rapid-deployment measures should be considered."},
+
+  {id:"7.3", lecture:"L7", q:"Why must you immediately stop a worker stepping on sealing elements during assembly?",
+   a:"<b>Critical \"no go\" situation!</b><ul><li><b>Damage:</b> Boots (dirt, gravel) can cut, deform, or compress rubber gaskets</li><li><b>Leak risk:</b> Even a small nick causes leaking under water pressure \u2192 progressive failure</li><li><b>Contamination:</b> Dirt in seal surfaces creates water channels</li></ul><b>Correct response:</b> Stop immediately, inspect for damage, clean/replace if needed, instruct the worker."},
+
+  {id:"7.4", lecture:"L7", q:"Correct reaction when seeing incorrect dismantling of mobile flood wall elements?",
+   a:"<ol><li><b>Stop work immediately</b></li><li><b>Assess:</b> Check stoplogs, pillars, sealing gaskets for damage</li><li><b>Correct:</b> Stoplogs removed top-to-bottom in sequence, never dropped or pulled sideways. Release pressing tools first. Unbolt pillars with 150 Nm torque wrench.</li><li><b>Document and report</b> to Flood Protection Centre</li><li><b>Reinforce training</b> \u2014 this is why regular exercises + VR training are essential</li></ol>"},
+
+  {id:"7.5", lecture:"L7", q:"Describe the step-by-step assembly of a stoplog-and-pillar flood wall.",
+   a:"<ol><li>Expose anchor bolt threads in foundation</li><li>Clean threads thoroughly</li><li>Clean guide rails and sealing surfaces</li><li>Mount pillar onto anchor bolts</li><li>Tighten to exactly 150 Nm with calibrated torque wrench</li><li>Insert bottom stoplog into guide rails</li><li>Attach pressing tool \u2014 press stoplog down onto bottom sealing</li><li>Tighten \u2014 compress stoplogs and gaskets together</li><li>Check bottom sealing for proper compression</li><li>Mount back support (bracing) on dry side</li></ol>Section manager inspects before sign-off."},
+
+  {id:"7.6", lecture:"L7", q:"Why are regular exercises critical for mobile flood protection?",
+   a:"Mobile systems depend 100% on <b>human performance under time pressure</b>.<ul><li><b>Assembling exercises:</b> Speed + muscle memory</li><li><b>Scenario exercises:</b> Realistic conditions incl. logistics + communication</li><li>Cologne: yearly, 3\u201328% of elements, supplemented by blended learning + VR</li><li>2011 real flood (15% elements assembled) validated the exercise programme</li></ul>Without exercises, even perfectly designed hardware fails."},
+
+  // ===== LECTURE 12 =====
+  {id:"12.1", lecture:"L12", q:"How would you explain to a citizen how a precipitation radar works?",
+   a:"Like an echo system for rain:<ul><li>Rotating antenna sends radio waves into the atmosphere</li><li>Waves bounce off water droplets / ice crystals back to the station</li><li><b>Echo strength</b> = rainfall intensity (more droplets = stronger signal)</li><li><b>Travel time</b> = distance of the rain</li><li>360\u00b0 rotation \u2192 creates a map of rainfall</li></ul><b>RADOLAN:</b> Radar data + ground rain gauges (ombrometers) = high-res maps updated every 10 min at 1 km\u00b2. Germany has 17 DWD weather radars."},
+
+  {id:"12.2", lecture:"L12", q:"Who is responsible for disaster management during torrential rain in Germany?",
+   a:"Three levels:<ul><li><b>Federal:</b> Civil protection (defence context), BBK coordinates nationally, NINA app</li><li><b>State:</b> Federal states handle disaster warnings/management through interior departments + situation centres</li><li><b>Municipal:</b> Mayors/district administrators lead, coordinate: fire brigades, DRK, ASB, DLRG, Johanniter, Malteser</li></ul>DWD issues weather warnings; EFAS provides European flood forecasts to all 16 state flood centres."},
+
+  {id:"12.3", lecture:"L12", q:"As mayor after the 2021 heavy rainfall event: what concrete measures for a disaster plan?",
+   a:"Low-pressure system \"Bernd\" (July 2021) showed warnings alone weren't enough.<br><br><b>Warning:</b><ul><li>Promote DWD Warnwetter + NINA apps</li><li>Cell broadcasting (reaches all phones, even on mute \u2014 introduced after 2021)</li><li>Local crisis communication plan</li></ul><b>Prevention (RAINMAN project):</b><ul><li>Buildings: waterproof basements, backflow valves, elevated electrics</li><li>Settlements: map flood zones, improve drainage, retention areas</li><li>Farmland/forests: increase soil water retention</li><li>Watercourses: restore natural floodplains</li></ul><b>Emergency:</b> Clear responsibilities, regular exercises, evacuation routes, mobile flood protection."},
+
+  {id:"12.4", lecture:"L12", q:"What is torrential rain and how is it defined?",
+   a:"No universal definition! Three approaches:<ul><li><b>DIN 4049-3:</b> High intensity relative to duration, on average \u22642\u00d7/year</li><li><b>DWD warning stages:</b> 15\u201325 l/m\u00b2/h (distinctive), >25\u201340 (severe), >40 (extreme)</li><li><b>WMO:</b> \u226550 mm in 24h</li></ul>Can be described via: threshold values, percentile methods, recurrence intervals, or heavy rain indices."},
+
+  // ===== AUDIT: NEW CARDS L1 =====
+  {id:"1.12", lecture:"L1", q:"What are the required contents of Step I (Preliminary Flood Risk Assessment) of the EU Floods Directive?",
+   a:"The preliminary assessment must include:<ul><li><b>Map of river basin districts</b> with general descriptions</li><li><b>Documentation of historical flood events</b></li><li><b>General flood characteristics</b> (first-order processes, flood plains, conveyance routes)</li><li><b>Development plans</b> (land use change, population, economic sectors, up-/downstream risk)</li><li><b>Probability evaluation</b> of future flood events</li><li><b>Impact forecast</b> of future flood events</li></ul>"},
+
+  {id:"1.13", lecture:"L1", q:"What must Step II (Flood Risk Maps) of the EU Floods Directive contain, and which scenarios must be mapped?",
+   a:"<b>Three scenarios:</b><ul><li><b>HQ10</b> (high probability)</li><li><b>HQ100</b> (medium probability)</li><li><b>HQextreme</b> (low probability)</li></ul>Maps must show:<ul><li>Water depths</li><li>Flow velocities</li><li>Areas with bank erosion and debris</li></ul>Additionally, <b>Flood Damage Maps</b> with number of affected residents and environmental damage."},
+
+  {id:"1.14", lecture:"L1", q:"What five organisational aspects run synchronously between the Floods Directive and the Water Framework Directive?",
+   a:"<ul><li><b>Spatial subdivision</b> (river basin districts)</li><li><b>Competent authority</b></li><li><b>Schedule</b> for implementation and repetition</li><li><b>Reporting mechanisms</b></li><li><b>Public participation</b></li></ul>Floods Directive Steps II and III must also align with WFD <b>Art. 4</b> (environmental objectives), <b>Art. 11</b> (programmes of measures), and <b>Art. 13</b> (management plans)."},
+
+  {id:"1.15", lecture:"L1", q:"What is the main criticism of Step III of the Floods Directive, and what constraint applies to measures?",
+   a:"<b>Constraint:</b> Measures that <b>increase flood risk for upstream or downstream neighbours are excluded</b>.<br><br><b>Criticism:</b> <b>No deadline exists for implementing the action plans.</b> Plans had to be published by end 2015, but no binding timeline for carrying out the measures."},
+
+  {id:"1.16", lecture:"L1", q:"What are the five adverse consequence categories according to the German Federal Water Act (WHG \u00a773)?",
+   a:"Flood risk = <b>Probability</b> \u00d7 <b>Damage extent</b><br><br>WHG \u00a773 lists five consequence categories:<ul><li><b>Human health</b></li><li><b>The environment</b></li><li><b>Cultural heritage</b></li><li><b>Economic activities</b></li><li><b>Considerable material assets</b></li></ul>"},
+
+  {id:"1.17", lecture:"L1", q:"What is the RIMAX research programme and what are its five focus areas?",
+   a:"<b>RIMAX</b> = Risk Management of Extreme Flood Events. 38 projects, 100+ partners (65% science, 20% SMEs, 15% administration). Coordinated by GFZ Potsdam.<br><br><b>Five focus areas:</b><ul><li>Flood forecasting</li><li>Operational flood management</li><li>Risk management</li><li>Risk communication</li><li>Dike safety</li></ul>"},
+
+  // ===== AUDIT: NEW CARDS L2 =====
+  {id:"2.5", lecture:"L2", q:"What was Flood Aid Dresden and why is it a good model for flood communication?",
+   a:"<b>Flood Aid Dresden</b> = a <b>private initiative</b> (not government) during the 2013 Elbe floods.<br><br><b>Goal:</b> Connect helpers with people seeking help \u2014 a practical matching service.<br><br><b>Explicitly NOT a goal:</b> Informing the general public.<br><br>Shows how <b>citizen-driven platforms</b> can fill gaps that government agencies cannot cover, especially for coordinating spontaneous volunteers."},
+
+  // ===== AUDIT: NEW CARDS L3 =====
+  {id:"3.6", lecture:"L3", q:"Why must engineering rely on humanities methods when integrating historical floods?",
+   a:"Historical flood analysis requires <b>source-critical analysis</b> \u2014 a classical humanities technique.<br><br>The field is called <b>Historical-technical and environmental research</b>. Methods:<ul><li><b>Data acquisition</b> from archives and research libraries</li><li><b>Source-critical analysis</b> of handwritten/printed materials (1500\u20131950)</li><li>Interpreting old handwriting, measurement units, cartographic conventions</li></ul>Engineers alone lack the training to find, read, and evaluate such historical sources reliably."},
+
+  {id:"3.7", lecture:"L3", q:"What flexibility does the EU Floods Directive allow for documenting historical floods?",
+   a:"Great flexibility under Art. 4(2):<ul><li>Descriptions <b>can be verbal</b> (written narrative)</li><li><b>Existing documents</b> (water management plans, maps) may be used</li><li>Based on <b>available or easily derivable information</b></li><li>No complex modelling required at this stage</li></ul>Must cover: past floods with significant adverse effects where <b>recurrence likelihood still exists</b>, and past floods where <b>similar future consequences are expected</b>."},
+
+  // ===== AUDIT: NEW CARDS L4 =====
+  {id:"4.6", lecture:"L4", q:"What were the four action targets of the LAWA recommendation for Flood Action Plans (1999)?",
+   a:"<ul><li><b>Reducing damage risks</b></li><li><b>Reducing flood water levels</b></li><li><b>Reinforcing flood awareness</b></li><li><b>Improving the flood early warning system</b></li></ul>These ensured a harmonised approach and comparable results across Germany."},
+
+  {id:"4.7", lecture:"L4", q:"What did the Flood Control Act of 2005 stipulate?",
+   a:"Flood areas (HQ100) and flood-prone areas must be marked in:<ul><li>Spatial plans</li><li>Land use plans</li><li>Development plans</li></ul><b>Paradigm shift:</b> From \"flood control thinking and promise\" (technology guarantees safety) to sober \"dealing with the risk.\""},
+
+  {id:"4.8", lecture:"L4", q:"What are the five categories of measures in Flood Action Plans? Give examples for natural retention.",
+   a:"<b>5 categories:</b><ul><li><b>1. Water retention in catchment</b></li><li><b>2. Water retention at the water body</b> (basins, polders)</li><li><b>3. Technical flood protection</b> (dikes, walls, mobile elements)</li><li><b>4. Precautionary measures</b> in planning area</li><li><b>5. Flood forecasting</b></li></ul><b>Natural retention examples:</b> Unsealing surfaces, decentralised infiltration, natural water body development, afforestation, recovery of retention areas.<br><br>All measures required a <b>cost-benefit evaluation</b>."},
+
+  {id:"4.9", lecture:"L4", q:"What scales (micro/meso/macro) are used for land use assessment in Flood Action Plans?",
+   a:"<ul><li><b>Microscale:</b> Individual objects (ALK data, aerial photos)</li><li><b>Mesoscale:</b> Groups of objects, e.g. streets (ATKIS/ALK data)</li><li><b>Macroscale:</b> Large-area overview</li></ul><b>FAP Rur example:</b><ul><li>Spatial delineation: Microscale</li><li>Damage parameters: Mesoscale</li><li>Damage calculation: Microscale</li><li>Presenting results: Mesoscale</li></ul>Scale choice affects quality vs. cost trade-off."},
+
+  {id:"4.10", lecture:"L4", q:"What are the steps in determining flood damage potential?",
+   a:"A 10-step chain:<ol><li>Hydrological model analysis</li><li>Hydraulic calculation</li><li>Acquisition of geo-information</li><li>Calculation of flood areas (depth maps)</li><li>Identifying the land use</li><li>Acquisition of economic indicators</li><li>Provision of damage functions</li><li>Computing use-specific amount of damage</li><li>Computing use-specific monetary damages</li><li>Analysis and summary</li></ol>"},
+
+  // ===== AUDIT: NEW CARDS L5 =====
+  {id:"5.7", lecture:"L5", q:"What must Flood Risk Maps show according to EU Floods Directive Article 6(5)?",
+   a:"<ul><li><b>Number of potentially affected inhabitants</b></li><li><b>Type of economic activities</b> in the area</li><li><b>IPPC installations</b> that could cause accidental pollution if flooded</li><li><b>Protected areas</b> (WFD Annex IV): water protection areas, bathing waters, nutrient-sensitive areas, Natura 2000</li><li>Areas with <b>high sediment/debris transport</b> and other pollution sources</li></ul>"},
+
+  {id:"5.8", lecture:"L5", q:"How does flood risk management work in the Netherlands, and what are the three VNK risk measures?",
+   a:"60% of population and 70% of GDP in areas <b>1\u20136.5 m below sea level</b>.<br><br><b>Paradigm shift after 1953 storm surge:</b><ul><li>Before: Reactive \u2014 strengthen levees based on highest observed level</li><li>After: Proactive \u2014 weigh reinforcement cost against risk reduction</li></ul><b>VNK project</b> calculated risk for 58 levee systems using:<ul><li><b>Economic risk</b> [\u20ac/ha/year]</li><li><b>Individual risk</b> [annual probability of death]</li><li><b>Societal risk</b> [total deaths as direct result]</li></ul>"},
+
+  {id:"5.9", lecture:"L5", q:"What are the legal stipulations for flood area designation in Germany (WHG & NRW)?",
+   a:"<b>Federal Water Act (old, pre-2010):</b><ul><li>Designate where \"not only minor\" damage expected</li><li>Deadlines: high damage potential by May 2010, medium by May 2012</li></ul><b>Current WHG \u00a778:</b><ul><li>Activities in flood areas require a <b>permit</b></li><li>Areas must preserve function as <b>natural retention</b></li></ul><b>NRW:</b><ul><li>Designation lasts <b>40 years</b></li><li>Published with overview map at 1:25,000 or 1:50,000</li></ul>"},
+
+  // ===== AUDIT: NEW CARDS L6 =====
+  {id:"6.7", lecture:"L6", q:"What is the Manning-Strickler formula and what are typical kSt roughness values?",
+   a:"<b>V = kSt \u00d7 I\u00b9\u2044\u00b2 \u00d7 R\u00b2\u2044\u00b3</b><ul><li><b>V</b> = flow velocity [m/s]</li><li><b>kSt</b> = Strickler roughness coefficient</li><li><b>I</b> = energy slope</li><li><b>R</b> = hydraulic radius</li></ul><b>Typical values:</b><ul><li>Main channel: kSt = 30\u201340 (smooth bed)</li><li>Flood plains: kSt = 5\u20138 (vegetation)</li></ul>Lower kSt = rougher surface = slower flow."},
+
+  {id:"6.8", lecture:"L6", q:"How has DTM preparation evolved from historical to current methods?",
+   a:"<b>Historical:</b> Aerial stereo photos \u2192 photogrammetric evaluation \u2192 manual land cover mapping \u2192 DTM \u2192 mesh<br><br><b>Current:</b> <b>Laser scanning (LiDAR)</b> \u2192 DTM with 1m grid \u2192 automatic thinning \u2192 automated land cover classification (ATKIS, satellite) \u2192 breaklines detected automatically \u2192 2D mesh generated directly<br><br>Key improvements: automation, higher resolution, faster mesh generation."},
+
+  // ===== AUDIT: NEW CARDS L7 =====
+  {id:"7.7", lecture:"L7", q:"What are the key figures of Cologne's mobile flood protection system?",
+   a:"<ul><li><b>Rhine bank:</b> 69.91 km urban area</li><li><b>Protected area:</b> 32.2 km (to 11.30 m) + 37.3 km (to 11.90 m)</li><li><b>Mobile wall length:</b> 10.3 km</li><li><b>Pillars:</b> 3,851</li><li><b>Stoplogs:</b> 39,405 (91% standard 2\u20133 m, 9% special = 81 different sizes)</li><li><b>Wall surface area:</b> 14,510 m\u00b2</li><li><b>Footbridges:</b> ~2 km</li><li><b>Storage:</b> 8 deposits (~7,000 m\u00b2)</li></ul>These numbers drive workforce size (87 technicians, 15 companies) and time requirements."},
+
+  {id:"7.8", lecture:"L7", q:"What triggered Cologne to implement mobile flood protection?",
+   a:"<b>Three severe Rhine floods in 10 years:</b><ul><li><b>1993:</b> 10.63 m (Cologne gauge)</li><li><b>1995:</b> 10.69 m (only 15 months later!)</li><li><b>1999:</b> Another major flood</li></ul>Mobile systems were chosen because:<ul><li>Permanent walls would block the Rhine promenade and city views</li><li>Mobile allows normal riverbank use when no flood threatens</li><li>Protection up to 11.30 m (standard) / 11.90 m (extended)</li></ul>"},
+
+  // ===== AUDIT: NEW CARDS L12 =====
+  {id:"12.5", lecture:"L12", q:"What is RADOLAN and why is it necessary?",
+   a:"<b>RADOLAN = Radar Online Authentication</b><ul><li>Radar does <b>not directly measure</b> precipitation \u2014 only reflectivity</li><li>RADOLAN <b>calibrates</b> radar with ground-based rain gauges (ombrometers)</li><li>17 DWD radars matched with hourly ombrometer data</li><li>Also uses stations from neighbouring countries at borders</li></ul><b>Result:</b> High-res precipitation maps<ul><li>Update: every <b>10 minutes</b></li><li>Resolution: <b>1 km\u00b2</b></li></ul>Without ground-truth calibration, radar gives inaccurate estimates."},
+
+  {id:"12.6", lecture:"L12", q:"Explain the Z-I relationship in radar precipitation measurement.",
+   a:"<b>Z = a \u00d7 I^b</b><ul><li><b>Z</b> = reflectivity factor (radar echo)</li><li><b>I</b> = precipitation intensity [mm/h]</li><li><b>b</b> \u2248 1.6 (roughly constant)</li><li><b>a</b> varies by type:</li><ul><li>a = 140 for drizzle</li><li>a = 200 on average</li><li>a = 500 during thunderstorms</li></ul></ul>The varying <b>a</b> shows why radar alone is insufficient \u2014 same reflectivity can mean different intensities. This is why <b>RADOLAN</b> calibration is needed."},
+
+  {id:"12.7", lecture:"L12", q:"What are the DWD's three warning stages for heavy rainfall?",
+   a:"<ul><li><b>Stage 1 \u2014 Distinctive:</b> 15\u201325 l/m\u00b2 in 1h <i>or</i> 20\u201335 l/m\u00b2 in 6h</li><li><b>Stage 2 \u2014 Severe:</b> >25\u201340 l/m\u00b2 in 1h <i>or</i> >35\u201360 l/m\u00b2 in 6h</li><li><b>Stage 3 \u2014 Extreme:</b> >40 l/m\u00b2 in 1h <i>or</i> >60 l/m\u00b2 in 6h</li></ul><b>WMO threshold:</b> \u226550 mm in 24h."},
+
+  {id:"12.8", lecture:"L12", q:"What is EFAS and what role did it play during low-pressure system 'Bernd' (2021)?",
+   a:"<b>EFAS = European Flood Awareness System</b><ul><li>Established after the <b>2002 flood catastrophe</b></li><li>Produces <b>twice-daily</b> flood predictions across Europe</li><li>Sent to <b>national institutions only</b> (not public) \u2014 in Germany to all 16 state flood centres</li></ul><b>During 'Bernd':</b><ul><li>Soils already had <b>very low storage capacity</b></li><li>DWD warned early, but <b>information chain to local decision-makers failed</b></li><li>Led to Germany implementing <b>cell broadcasting</b> (alerts to all phones in a radio cell, even on mute)</li></ul>"},
+
+  {id:"12.9", lecture:"L12", q:"What is the RAINMAN project and what areas do its measures cover?",
+   a:"EU project supporting regional authorities with heavy rain risks. Developed a <b>toolbox of 100 tested measures</b>.<br><br><b>Seven categories:</b><ul><li><b>Buildings</b></li><li><b>Settlement areas</b></li><li><b>Farmland</b></li><li><b>Forests</b></li><li><b>Watercourses</b></li><li><b>Risk communication</b></li><li><b>Emergency management</b></li></ul>Practical resource for municipalities developing heavy rain strategies."},
+];
+
+// ===== PERSISTENCE =====
+function saveProgress() {
+  const data = { known: [...known], unknown: [...unknown], idx, activeFilter };
+  localStorage.setItem('frm_flashcards', JSON.stringify(data));
+}
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem('frm_flashcards');
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return { known: new Set(data.known), unknown: new Set(data.unknown), idx: data.idx, activeFilter: data.activeFilter };
+  } catch(e) { return null; }
+}
+
+// ===== APP STATE =====
+let deck = [];
+let idx = 0;
+let known = new Set();
+let unknown = new Set();
+let activeFilter = 'all';
+
+const lectures = [...new Set(ALL_CARDS.map(c => c.lecture))];
+const lectureNames = {L1:'L1: Introduction', L2:'L2: Communication', L3:'L3: Historical Floods', L4:'L4: Action Plans', L5:'L5: Hazard Maps', L6:'L6: Hydraulic Models', L7:'L7: Mobile Protection', L12:'L12: Torrential Rain'};
+
+function init() {
+  const f = document.getElementById('filters');
+  let html = '<button onclick="setFilter(\'all\',this)">All</button>';
+  lectures.forEach(l => {
+    html += `<button onclick="setFilter('${l}',this)">${lectureNames[l]||l}</button>`;
+  });
+  f.innerHTML = html;
+
+  // Restore saved progress
+  const saved = loadProgress();
+  if (saved) {
+    activeFilter = saved.activeFilter;
+    deck = activeFilter === 'all' ? [...ALL_CARDS] : ALL_CARDS.filter(c => c.lecture === activeFilter);
+    known = saved.known;
+    unknown = saved.unknown;
+    idx = Math.min(saved.idx, deck.length - 1);
+    // Highlight correct filter button
+    const btns = f.querySelectorAll('button');
+    btns.forEach(b => {
+      if ((activeFilter === 'all' && b.textContent === 'All') ||
+          b.textContent === (lectureNames[activeFilter]||activeFilter))
+        b.classList.add('active');
+    });
+    showCard();
+  } else {
+    f.querySelector('button').classList.add('active');
+    setFilter('all', f.querySelector('button'));
+  }
+}
+
+function setFilter(filter, btn) {
+  activeFilter = filter;
+  document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  deck = filter === 'all' ? [...ALL_CARDS] : ALL_CARDS.filter(c => c.lecture === filter);
+  known = new Set(); unknown = new Set(); idx = 0;
+  showCard();
+}
+
+function shuffleDeck() {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  idx = 0; known = new Set(); unknown = new Set();
+  showCard();
+}
+
+function showCard() {
+  document.getElementById('doneScreen').style.display = 'none';
+  document.getElementById('cardArea').style.display = 'flex';
+  document.getElementById('controls').style.display = 'flex';
+  if (deck.length === 0) return;
+  const c = deck[idx];
+  document.getElementById('card').classList.remove('flipped');
+  document.getElementById('qlabel').textContent = `Q ${c.id} \u2014 ${lectureNames[c.lecture]||c.lecture}`;
+  document.getElementById('qtext').textContent = c.q;
+  document.getElementById('atext').innerHTML = c.a;
+  document.getElementById('btnPrev').disabled = idx === 0;
+  document.getElementById('btnNext').disabled = idx >= deck.length - 1;
+  const pct = ((known.size + unknown.size) / deck.length * 100).toFixed(0);
+  document.getElementById('progress').style.width = pct + '%';
+  document.getElementById('stats').textContent =
+    `${idx+1}/${deck.length} | Got it: ${known.size} | Don't know: ${unknown.size}`;
+}
+
+function flipCard() { document.getElementById('card').classList.toggle('flipped'); }
+function next() { if (idx < deck.length - 1) { idx++; saveProgress(); showCard(); } }
+function prev() { if (idx > 0) { idx--; saveProgress(); showCard(); } }
+
+function markCard(isKnown) {
+  const id = deck[idx].id;
+  if (isKnown) { known.add(id); unknown.delete(id); }
+  else { unknown.add(id); known.delete(id); }
+  saveProgress();
+  if (known.size + unknown.size >= deck.length) { showDone(); return; }
+  if (idx < deck.length - 1) { idx++; showCard(); }
+  else showDone();
+}
+
+function showDone() {
+  document.getElementById('cardArea').style.display = 'none';
+  document.getElementById('controls').style.display = 'none';
+  document.getElementById('doneScreen').style.display = 'block';
+  const pct = (known.size / deck.length * 100).toFixed(0);
+  document.getElementById('finalScore').textContent = pct + '%';
+  document.getElementById('finalDetail').textContent =
+    `${known.size} got it, ${unknown.size} don't know out of ${deck.length} cards`;
+  document.getElementById('progress').style.width = '100%';
+  document.getElementById('btnReviewWrong').style.display = unknown.size > 0 ? 'inline-block' : 'none';
+}
+
+function resetAll() {
+  deck = activeFilter === 'all' ? [...ALL_CARDS] : ALL_CARDS.filter(c => c.lecture === activeFilter);
+  known = new Set(); unknown = new Set(); idx = 0;
+  localStorage.removeItem('frm_flashcards');
+  showCard();
+}
+
+function reviewWrong() {
+  deck = deck.filter(c => unknown.has(c.id));
+  known = new Set(); unknown = new Set(); idx = 0; showCard();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); flipCard(); }
+  if (e.code === 'ArrowRight') next();
+  if (e.code === 'ArrowLeft') prev();
+  if (e.code === 'Enter') markCard(true);
+  if (e.code === 'KeyX') markCard(false);
+});
+
+init();
+</script>
+</body>
+</html>
