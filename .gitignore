@@ -2,3 +2,6 @@
 *.png
 *.docx
 create_docx.py
+knowledge_base.txt
+.env
+flashcards.html

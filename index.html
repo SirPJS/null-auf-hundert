@@ -74,6 +74,55 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f0eb; colo
   .card-back .card-text { font-size: 0.85rem; }
   .card-face { padding: 1.2rem; }
 }
+/* Chat toggle button */
+.chat-toggle {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; width: 52px; height: 52px;
+  border-radius: 50%; background: #2d2a26; color: #f5f0eb; border: none;
+  font-size: 1.4rem; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  z-index: 1000; display: flex; align-items: center; justify-content: center;
+  transition: transform 0.15s;
+}
+.chat-toggle:hover { transform: scale(1.08); }
+
+/* Chat panel */
+.chat-panel {
+  position: fixed; bottom: 5rem; right: 1.5rem; width: 380px; max-height: 520px;
+  background: #fff; border: 1px solid #d6cfc8; border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12); z-index: 999;
+  display: none; flex-direction: column; overflow: hidden;
+}
+.chat-panel.open { display: flex; }
+.chat-header {
+  padding: 0.8rem 1rem; background: #2d2a26; color: #f5f0eb;
+  font-size: 0.85rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center;
+}
+.chat-header button { background: none; border: none; color: #f5f0eb; cursor: pointer; font-size: 1.1rem; }
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 0.8rem; min-height: 280px; max-height: 380px;
+  display: flex; flex-direction: column; gap: 0.6rem;
+}
+.msg { padding: 0.6rem 0.8rem; border-radius: 10px; font-size: 0.85rem; line-height: 1.5; max-width: 88%; word-wrap: break-word; }
+.msg-user { background: #2d2a26; color: #f5f0eb; align-self: flex-end; }
+.msg-ai { background: #f0ebe5; color: #2d2a26; align-self: flex-start; }
+.msg-ai ul { padding-left: 1rem; margin: 0.3rem 0; }
+.msg-ai li { margin-bottom: 0.2rem; }
+.msg-loading { color: #8a8480; font-style: italic; align-self: flex-start; font-size: 0.8rem; }
+.chat-input-row {
+  display: flex; border-top: 1px solid #e0d9d2; padding: 0.5rem;
+}
+.chat-input-row input {
+  flex: 1; border: 1px solid #d6cfc8; border-radius: 8px; padding: 0.5rem 0.7rem;
+  font-size: 0.85rem; outline: none; background: #fffdf9; color: #2d2a26;
+}
+.chat-input-row input::placeholder { color: #b5afa8; }
+.chat-input-row button {
+  margin-left: 0.4rem; padding: 0.5rem 0.8rem; background: #2d2a26; color: #f5f0eb;
+  border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem;
+}
+
+@media (max-width: 500px) {
+  .chat-panel { width: calc(100vw - 2rem); right: 1rem; bottom: 4.5rem; }
+}
 </style>
 </head>
 <body>
@@ -500,5 +549,94 @@ document.addEventListener('keydown', e => {
 
 init();
 </script>
+<!-- Chat UI -->
+<button class="chat-toggle" onclick="toggleChat()" title="Ask AI">&#128172;</button>
+
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <span>FRM Study Assistant (Claude)</span>
+    <button onclick="toggleChat()">&#10005;</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="msg msg-ai">Hi! I know all the lecture material. Ask me anything about Flood Risk Management.</div>
+  </div>
+  <div class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="Ask a question..." onkeydown="if(event.key==='Enter')sendChat()">
+    <button onclick="sendChat()">Send</button>
+  </div>
+</div>
+
+<script>
+let chatHistory = [];
+
+function toggleChat() {
+  document.getElementById('chatPanel').classList.toggle('open');
+  if (document.getElementById('chatPanel').classList.contains('open')) {
+    document.getElementById('chatInput').focus();
+  }
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const msgs = document.getElementById('chatMessages');
+
+  // Add user message
+  const userDiv = document.createElement('div');
+  userDiv.className = 'msg msg-user';
+  userDiv.textContent = msg;
+  msgs.appendChild(userDiv);
+
+  // Loading indicator
+  const loadDiv = document.createElement('div');
+  loadDiv.className = 'msg msg-loading';
+  loadDiv.textContent = 'Thinking...';
+  msgs.appendChild(loadDiv);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  chatHistory.push({ role: 'user', content: msg });
+
+  try {
+    const res = await fetch('/.netlify/functions/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: chatHistory }),
+    });
+
+    const data = await res.json();
+    loadDiv.remove();
+
+    if (data.error) {
+      const errDiv = document.createElement('div');
+      errDiv.className = 'msg msg-ai';
+      errDiv.textContent = 'Error: ' + data.error;
+      msgs.appendChild(errDiv);
+    } else {
+      chatHistory.push({ role: 'assistant', content: data.reply });
+      const aiDiv = document.createElement('div');
+      aiDiv.className = 'msg msg-ai';
+      // Simple markdown-ish rendering
+      aiDiv.innerHTML = data.reply
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/\n- /g, '\n<li>')
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+      msgs.appendChild(aiDiv);
+    }
+  } catch (err) {
+    loadDiv.remove();
+    const errDiv = document.createElement('div');
+    errDiv.className = 'msg msg-ai';
+    errDiv.textContent = 'Connection error. Please try again.';
+    msgs.appendChild(errDiv);
+  }
+
+  msgs.scrollTop = msgs.scrollHeight;
+}
+</script>
+
 </body>
 </html>
